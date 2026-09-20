@@ -9,8 +9,9 @@
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
     #log {
       position: fixed; top: 0; left: 0; right: 0;
-      z-index: 999; background: rgba(0,0,0,0.8);
-      padding: 10px; font-size: 13px; line-height: 1.8;
+      z-index: 999; background: rgba(0,0,0,0.85);
+      padding: 12px; font-size: 13px; line-height: 2;
+      max-height: 50vh; overflow-y: auto;
       pointer-events: none;
     }
     #start-btn {
@@ -63,37 +64,68 @@
       console.log(msg);
     }
 
+    // Catch any uncaught JS errors and show on screen
+    window.addEventListener('error', (e) => {
+      addLog('❌ JS Error: ' + e.message + ' (' + e.filename?.split('/').pop() + ':' + e.lineno + ')');
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      addLog('❌ Unhandled promise rejection: ' + e.reason);
+    });
+
     btn.addEventListener('click', () => {
       btn.style.display = 'none';
-      arScene.style.display = 'block';
-      addLog('✅ Begin tapped — scene visible');
+      addLog('✅ Begin tapped');
 
+      // Show scene
+      arScene.style.display = 'block';
+      addLog('✅ Scene visible');
+
+      // Listen for A-Frame loaded
       arScene.addEventListener('loaded', () => {
-        addLog('✅ A-Frame loaded');
-        const sys = arScene.systems['mindar-image-system'];
-        if (sys) {
-          addLog('✅ MindAR system found — calling start()');
-          sys.start();
-        } else {
-          addLog('❌ MindAR system NOT found');
-        }
+        addLog('✅ A-Frame loaded event fired');
       });
 
+      // Listen for AR events
       arScene.addEventListener('arReady', () => {
-        addLog('✅ arReady — camera is live!');
+        addLog('✅ arReady — camera live!');
       });
 
       arScene.addEventListener('arError', (e) => {
         addLog('❌ arError: ' + JSON.stringify(e.detail));
       });
 
+      // Try to grab MindAR system immediately and poll until available
+      addLog('⏳ Polling for MindAR system...');
+      let attempts = 0;
+      const poll = setInterval(() => {
+        attempts++;
+        const sys = arScene.systems['mindar-image-system'];
+        if (sys) {
+          clearInterval(poll);
+          addLog('✅ MindAR system found after ' + attempts + ' attempt(s) — calling start()');
+          try {
+            sys.start();
+            addLog('✅ start() called successfully');
+          } catch(e) {
+            addLog('❌ start() threw: ' + e.message);
+          }
+        } else if (attempts >= 50) {
+          clearInterval(poll);
+          addLog('❌ MindAR system never appeared after ' + attempts + ' attempts');
+        } else {
+          addLog('⏳ attempt ' + attempts + ' — system not ready yet');
+        }
+      }, 200);
+
+      // Target events
       const target = arScene.querySelector('[mindar-image-target]');
       target.addEventListener('targetFound', () => {
         addLog('🎯 Target found — playing video');
         video.play().catch(e => addLog('❌ Video play error: ' + e.message));
       });
       target.addEventListener('targetLost', () => {
-        addLog('👁 Target lost');
+        addLog('👁 Target lost — pausing video');
         video.pause();
       });
     });
