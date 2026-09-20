@@ -100,7 +100,7 @@
       let attempts = 0;
       const poll = setInterval(() => {
         attempts++;
-        const sys = arScene.systems['mindar-image-system'];
+        const sys = arScene.systems && arScene.systems['mindar-image-system'];
         if (sys) {
           clearInterval(poll);
           addLog('✅ MindAR system found after ' + attempts + ' attempt(s) — calling start()');
