@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>AR Test</title>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js" onload="document.getElementById('log').innerHTML+='<br>✅ A-Frame script loaded'" onerror="document.getElementById('log').innerHTML+='<br>❌ A-Frame script FAILED'"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js" onload="document.getElementById('log').innerHTML+='<br>✅ MindAR script loaded'" onerror="document.getElementById('log').innerHTML+='<br>❌ MindAR script FAILED'"></script>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
 
@@ -40,7 +41,7 @@
 </head>
 <body>
 
-  <div id="log">⏳ Page loaded — A-Frame initializing...</div>
+  <div id="log">⏳ Page loaded — scripts loading...</div>
 
   <!-- Black overlay hides the scene until user taps Begin -->
   <div id="start-overlay">
