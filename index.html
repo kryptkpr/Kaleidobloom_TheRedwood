@@ -425,16 +425,17 @@
     });
 
     function startAR() {
-      instructions.classList.add('hidden');
-      arScene.style.display = 'block';
+  instructions.classList.add('hidden');
+  arScene.style.display = 'block';
 
-      arScene.addEventListener('arReady', () => {
-        console.log('MindAR ready');
-      });
+  arScene.addEventListener('loaded', () => {
+    const mindARSystem = arScene.systems['mindar-image-system'];
+    mindARSystem.start();
+  });
 
-      arScene.addEventListener('arError', (e) => {
-        console.warn('MindAR error', e.detail);
-      });
+  arScene.addEventListener('arReady', () => {
+    console.log('MindAR ready');
+  });
 
       const target = arScene.querySelector('[mindar-image-target]');
 
