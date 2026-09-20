@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
+
     #log {
       position: fixed; top: 0; left: 0; right: 0;
       z-index: 999; background: rgba(0,0,0,0.85);
@@ -14,30 +15,44 @@
       max-height: 50vh; overflow-y: auto;
       pointer-events: none;
     }
+
+    /* Overlay sits ON TOP of the scene — scene always in DOM and visible */
+    #start-overlay {
+      position: fixed; inset: 0;
+      z-index: 99;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    #start-overlay.hidden { display: none; }
+
     #start-btn {
-      position: fixed; bottom: 40px; left: 50%;
-      transform: translateX(-50%);
-      z-index: 999;
       padding: 16px 40px;
       font-size: 18px;
       background: #fff; color: #000;
       border: none; border-radius: 4px;
       cursor: pointer;
     }
+
+    /* Scene is always in the DOM — never display:none */
     a-scene { position: fixed !important; inset: 0; }
   </style>
 </head>
 <body>
 
-  <div id="log">⏳ Waiting for Begin tap...</div>
-  <button id="start-btn">Begin AR</button>
+  <div id="log">⏳ Page loaded — A-Frame initializing...</div>
 
+  <!-- Black overlay hides the scene until user taps Begin -->
+  <div id="start-overlay">
+    <button id="start-btn">Begin AR</button>
+  </div>
+
+  <!-- Scene is always present and visible in DOM -->
   <a-scene
     id="ar-scene"
     mindar-image="imageTargetSrc: targets/targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;"
     vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    style="display:none;">
+    device-orientation-permission-ui="enabled: false">
 
     <a-assets>
       <video id="redwood-video" src="video/Redwood_ARfractal.mp4"
@@ -56,6 +71,7 @@
   <script>
     const log = document.getElementById('log');
     const btn = document.getElementById('start-btn');
+    const overlay = document.getElementById('start-overlay');
     const arScene = document.getElementById('ar-scene');
     const video = document.getElementById('redwood-video');
 
@@ -64,68 +80,59 @@
       console.log(msg);
     }
 
-    // Catch any uncaught JS errors and show on screen
     window.addEventListener('error', (e) => {
-      addLog('❌ JS Error: ' + e.message + ' (' + e.filename?.split('/').pop() + ':' + e.lineno + ')');
+      addLog('❌ JS Error: ' + e.message);
     });
 
     window.addEventListener('unhandledrejection', (e) => {
-      addLog('❌ Unhandled promise rejection: ' + e.reason);
+      addLog('❌ Promise rejection: ' + e.reason);
+    });
+
+    // Log when A-Frame fires loaded — even before user taps
+    arScene.addEventListener('loaded', () => {
+      addLog('✅ A-Frame loaded');
+      const sys = arScene.systems && arScene.systems['mindar-image-system'];
+      addLog(sys ? '✅ MindAR system present on load' : '⚠️ MindAR system not yet on load (normal)');
     });
 
     btn.addEventListener('click', () => {
-      btn.style.display = 'none';
-      addLog('✅ Begin tapped');
+      overlay.classList.add('hidden');
+      addLog('✅ Begin tapped — starting MindAR');
 
-      // Show scene
-      arScene.style.display = 'block';
-      addLog('✅ Scene visible');
-
-      // Listen for A-Frame loaded
-      arScene.addEventListener('loaded', () => {
-        addLog('✅ A-Frame loaded event fired');
-      });
-
-      // Listen for AR events
-      arScene.addEventListener('arReady', () => {
-        addLog('✅ arReady — camera live!');
-      });
-
-      arScene.addEventListener('arError', (e) => {
-        addLog('❌ arError: ' + JSON.stringify(e.detail));
-      });
-
-      // Try to grab MindAR system immediately and poll until available
-      addLog('⏳ Polling for MindAR system...');
       let attempts = 0;
       const poll = setInterval(() => {
         attempts++;
         const sys = arScene.systems && arScene.systems['mindar-image-system'];
         if (sys) {
           clearInterval(poll);
-          addLog('✅ MindAR system found after ' + attempts + ' attempt(s) — calling start()');
+          addLog('✅ MindAR system found after ' + attempts + ' attempt(s)');
           try {
             sys.start();
-            addLog('✅ start() called successfully');
+            addLog('✅ start() called');
           } catch(e) {
-            addLog('❌ start() threw: ' + e.message);
+            addLog('❌ start() error: ' + e.message);
           }
         } else if (attempts >= 50) {
           clearInterval(poll);
           addLog('❌ MindAR system never appeared after ' + attempts + ' attempts');
-        } else {
-          addLog('⏳ attempt ' + attempts + ' — system not ready yet');
         }
       }, 200);
 
-      // Target events
+      arScene.addEventListener('arReady', () => {
+        addLog('✅ arReady — camera is live!');
+      });
+
+      arScene.addEventListener('arError', (e) => {
+        addLog('❌ arError: ' + JSON.stringify(e.detail));
+      });
+
       const target = arScene.querySelector('[mindar-image-target]');
       target.addEventListener('targetFound', () => {
         addLog('🎯 Target found — playing video');
-        video.play().catch(e => addLog('❌ Video play error: ' + e.message));
+        video.play().catch(e => addLog('❌ Video error: ' + e.message));
       });
       target.addEventListener('targetLost', () => {
-        addLog('👁 Target lost — pausing video');
+        addLog('👁 Target lost');
         video.pause();
       });
     });
