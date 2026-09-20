@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>The Redwood — Kaleidobloom AR</title>
 
-  <!-- MindAR + A-Frame -->
+  <!-- A-Frame first, then MindAR -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
@@ -27,35 +28,104 @@
       font-family: 'Cormorant Garamond', Georgia, serif;
     }
 
-    /* ── LOADING SCREEN ── */
-    #loading-screen {
-      position: fixed; inset: 0; z-index: 100;
-      background: var(--ink);
+    /* ── INSTRUCTIONS OVERLAY — sits on top of scene ── */
+    #instructions {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(26,20,16,0.97);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 2rem;
-      transition: opacity 0.8s ease;
+      padding: 2.5rem;
+      transition: opacity 0.6s ease;
     }
 
-    #loading-screen.hidden {
+    #instructions.hidden {
       opacity: 0;
       pointer-events: none;
     }
 
-    .loading-title {
+    .instructions-eyebrow {
       font-family: 'Cinzel', serif;
       font-weight: 300;
-      font-size: clamp(1.1rem, 4vw, 1.5rem);
-      letter-spacing: 0.3em;
-      color: var(--cream);
+      font-size: 0.65rem;
+      letter-spacing: 0.5em;
+      color: var(--gold);
       text-transform: uppercase;
     }
 
-    .loading-subtitle {
+    .instructions-title {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: clamp(1.6rem, 6vw, 2.2rem);
+      letter-spacing: 0.2em;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .instructions-body {
       font-style: italic;
-      font-size: clamp(0.85rem, 3vw, 1rem);
-      color: var(--gold);
-      letter-spacing: 0.1em;
+      font-size: clamp(0.9rem, 3vw, 1.05rem);
+      color: rgba(245,240,232,0.65);
+      text-align: center;
+      max-width: 300px;
+      line-height: 2;
+    }
+
+    .divider {
+      width: 60px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    .begin-btn {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.75rem;
+      letter-spacing: 0.45em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: var(--gold);
+      border: none;
+      padding: 1rem 2.5rem;
+      cursor: pointer;
+      pointer-events: all;
+      transition: background 0.3s, letter-spacing 0.3s;
+      margin-top: 0.5rem;
+    }
+
+    .begin-btn:hover { background: var(--cream); letter-spacing: 0.55em; }
+
+    .artist-credit {
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      color: rgba(245,240,232,0.25);
+      text-align: center;
+      pointer-events: all;
+    }
+
+    .artist-credit a {
+      color: rgba(201,169,110,0.5);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .artist-credit a:hover { color: var(--gold); }
+
+    /* ── AR INITIALIZING STATE ── */
+    #ar-loading {
+      position: fixed; inset: 0; z-index: 40;
+      background: rgba(26,20,16,0.95);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    #ar-loading.visible {
+      opacity: 1;
+      pointer-events: all;
     }
 
     .loading-bar-wrap {
@@ -78,22 +148,22 @@
       100% { left: 100%; }
     }
 
-    .loading-hint {
-      font-size: 0.75rem;
-      color: rgba(245,240,232,0.4);
-      letter-spacing: 0.15em;
-      text-align: center;
-      padding: 0 2rem;
-      line-height: 1.8;
+    .ar-loading-text {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      color: var(--cream);
+      text-transform: uppercase;
+      opacity: 0.7;
     }
 
-    /* ── OVERLAY UI ── */
+    /* ── UI OVERLAY ── */
     #ui-overlay {
       position: fixed; inset: 0; z-index: 10;
       pointer-events: none;
     }
 
-    /* Top bar */
     .top-bar {
       position: absolute; top: 0; left: 0; right: 0;
       padding: max(env(safe-area-inset-top, 0px), 1.5rem) 2rem 1rem;
@@ -222,134 +292,13 @@
       letter-spacing: 0.05em;
     }
 
-    /* ── INSTRUCTIONS MODAL ── */
-    #instructions {
-      position: fixed; inset: 0; z-index: 50;
-      background: rgba(26,20,16,0.97);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 2rem;
-      padding: 2.5rem;
-      transition: opacity 0.6s ease;
-    }
-
-    #instructions.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .instructions-eyebrow {
-      font-family: 'Cinzel', serif;
-      font-weight: 300;
-      font-size: 0.65rem;
-      letter-spacing: 0.5em;
-      color: var(--gold);
-      text-transform: uppercase;
-    }
-
-    .instructions-title {
-      font-family: 'Cinzel', serif;
-      font-weight: 300;
-      font-size: clamp(1.6rem, 6vw, 2.2rem);
-      letter-spacing: 0.2em;
-      color: var(--cream);
-      text-align: center;
-      line-height: 1.3;
-    }
-
-    .instructions-body {
-      font-style: italic;
-      font-size: clamp(0.9rem, 3vw, 1.05rem);
-      color: rgba(245,240,232,0.65);
-      text-align: center;
-      max-width: 300px;
-      line-height: 2;
-    }
-
-    .divider {
-      width: 60px; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    }
-
-    .begin-btn {
-      font-family: 'Cinzel', serif;
-      font-weight: 300;
-      font-size: 0.75rem;
-      letter-spacing: 0.45em;
-      text-transform: uppercase;
-      color: var(--ink);
-      background: var(--gold);
-      border: none;
-      padding: 1rem 2.5rem;
-      cursor: pointer;
-      pointer-events: all;
-      transition: background 0.3s, letter-spacing 0.3s;
-      margin-top: 0.5rem;
-    }
-
-    .begin-btn:hover { background: var(--cream); letter-spacing: 0.55em; }
-
-    .artist-credit {
-      font-size: 0.68rem;
-      letter-spacing: 0.2em;
-      color: rgba(245,240,232,0.25);
-      text-align: center;
-      pointer-events: all;
-    }
-
-    .artist-credit a {
-      color: rgba(201,169,110,0.5);
-      text-decoration: none;
-      transition: color 0.3s;
-    }
-
-    .artist-credit a:hover { color: var(--gold); }
-
-    /* ── AR INITIALIZING STATE ── */
-    #ar-loading {
-      position: fixed; inset: 0; z-index: 40;
-      background: rgba(26,20,16,0.92);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 1.5rem;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.4s ease;
-    }
-
-    #ar-loading.visible {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    .ar-loading-text {
-      font-family: 'Cinzel', serif;
-      font-weight: 300;
-      font-size: 0.7rem;
-      letter-spacing: 0.4em;
-      color: var(--cream);
-      text-transform: uppercase;
-      opacity: 0.7;
-    }
-
-    /* A-Frame scene */
-    a-scene {
-      position: fixed !important;
-      inset: 0;
-    }
+    /* A-Frame scene — always in DOM */
+    a-scene { position: fixed !important; inset: 0; }
   </style>
 </head>
 <body>
 
-  <!-- ══ LOADING SCREEN ══ -->
-  <div id="loading-screen">
-    <div class="loading-title">Kaleidobloom</div>
-    <div class="loading-subtitle">An Augmented Reality Experience</div>
-    <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
-    <div class="loading-hint">Initializing camera &amp; image recognition<br>Please allow camera access when prompted</div>
-  </div>
-
-  <!-- ══ INSTRUCTIONS ══ -->
+  <!-- ══ INSTRUCTIONS — on top of scene ══ -->
   <div id="instructions">
     <div class="instructions-eyebrow">Michael Haggerty</div>
     <div class="instructions-title">The Redwood</div>
@@ -367,9 +316,7 @@
 
   <!-- ══ AR INITIALIZING ══ -->
   <div id="ar-loading">
-    <div class="loading-bar-wrap" style="width:160px;">
-      <div class="loading-bar"></div>
-    </div>
+    <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
     <div class="ar-loading-text">Starting camera&hellip;</div>
   </div>
 
@@ -400,15 +347,14 @@
     </div>
   </div>
 
-  <!-- ══ AR SCENE ══ -->
+  <!-- ══ AR SCENE — always in DOM, never display:none ══ -->
   <a-scene
     id="ar-scene"
     mindar-image="imageTargetSrc: targets/targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights"
     vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    style="display:none;">
+    device-orientation-permission-ui="enabled: false">
 
     <a-assets>
       <video
@@ -424,7 +370,7 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- 1438x1080 = 1.331 aspect ratio → height: 0.753 -->
+    <!-- 1438x1080 → height: 0.753 -->
     <a-entity mindar-image-target="targetIndex: 0">
       <a-video
         src="#redwood-video"
@@ -438,54 +384,44 @@
   </a-scene>
 
   <script>
-    const loadingScreen = document.getElementById('loading-screen');
-    const instructions  = document.getElementById('instructions');
-    const arLoadingEl   = document.getElementById('ar-loading');
-    const arScene       = document.getElementById('ar-scene');
-    const scanPrompt    = document.getElementById('scan-prompt');
-    const foundPrompt   = document.getElementById('found-prompt');
-    const redwoodVideo  = document.getElementById('redwood-video');
-    const beginBtn      = document.getElementById('begin-btn');
+    const instructions = document.getElementById('instructions');
+    const arLoading    = document.getElementById('ar-loading');
+    const arScene      = document.getElementById('ar-scene');
+    const scanPrompt   = document.getElementById('scan-prompt');
+    const foundPrompt  = document.getElementById('found-prompt');
+    const redwoodVideo = document.getElementById('redwood-video');
+    const beginBtn     = document.getElementById('begin-btn');
 
-    // Dismiss loading screen after brief moment
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        loadingScreen.classList.add('hidden');
-      }, 2200);
-    });
-
-    beginBtn.addEventListener('click', startAR);
-
-    function startAR() {
-      // Hide instructions, show AR initializing spinner
+    beginBtn.addEventListener('click', () => {
+      // Swap instruction screen for loading indicator
       instructions.classList.add('hidden');
-      arLoadingEl.classList.add('visible');
+      arLoading.classList.add('visible');
 
-      // Make the A-Frame scene part of the DOM and visible
-      arScene.style.display = 'block';
-
-      // Wait for A-Frame to finish loading, then start MindAR
-      arScene.addEventListener('loaded', () => {
-        const mindARSystem = arScene.systems['mindar-image-system'];
-        if (mindARSystem) {
-          mindARSystem.start();
-        } else {
-          console.warn('MindAR system not found — check the script loaded correctly.');
+      // Poll for MindAR system — scene is already in DOM so this resolves quickly
+      let attempts = 0;
+      const poll = setInterval(() => {
+        attempts++;
+        const sys = arScene.systems && arScene.systems['mindar-image-system'];
+        if (sys) {
+          clearInterval(poll);
+          sys.start();
+        } else if (attempts >= 50) {
+          clearInterval(poll);
+          console.warn('MindAR system never appeared');
         }
-      });
+      }, 200);
 
-      // Camera is ready — hide the initializing overlay
+      // Camera ready — hide loading, show scan UI
       arScene.addEventListener('arReady', () => {
-        arLoadingEl.classList.remove('visible');
-        console.log('MindAR ready');
+        arLoading.classList.remove('visible');
       });
 
       arScene.addEventListener('arError', (e) => {
-        arLoadingEl.classList.remove('visible');
-        console.warn('MindAR error:', e.detail);
+        arLoading.classList.remove('visible');
+        console.warn('arError', e.detail);
       });
 
-      // Painting recognized — play film
+      // Painting recognized
       const target = arScene.querySelector('[mindar-image-target]');
 
       target.addEventListener('targetFound', () => {
@@ -494,13 +430,12 @@
         redwoodVideo.play().catch(e => console.warn('Autoplay blocked:', e));
       });
 
-      // Painting lost — pause film, return to scanning
       target.addEventListener('targetLost', () => {
         scanPrompt.classList.remove('hidden');
         foundPrompt.classList.remove('visible');
         redwoodVideo.pause();
       });
-    }
+    });
   </script>
 
 </body>
