@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>The Redwood — Kaleidobloom AR</title>
+
+  <!-- MindAR + A-Frame -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@300;400&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #f5f0e8;
+      --ink: #1a1410;
+      --gold: #c9a96e;
+      --mist: rgba(245, 240, 232, 0.92);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--ink);
+      font-family: 'Cormorant Garamond', Georgia, serif;
+    }
+
+    /* ── LOADING SCREEN ── */
+    #loading-screen {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--ink);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2rem;
+      transition: opacity 0.8s ease;
+    }
+
+    #loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-title {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: clamp(1.1rem, 4vw, 1.5rem);
+      letter-spacing: 0.3em;
+      color: var(--cream);
+      text-transform: uppercase;
+    }
+
+    .loading-subtitle {
+      font-style: italic;
+      font-size: clamp(0.85rem, 3vw, 1rem);
+      color: var(--gold);
+      letter-spacing: 0.1em;
+    }
+
+    .loading-bar-wrap {
+      width: min(280px, 70vw);
+      height: 1px;
+      background: rgba(245,240,232,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading-bar {
+      position: absolute; left: -100%; top: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    .loading-hint {
+      font-size: 0.75rem;
+      color: rgba(245,240,232,0.4);
+      letter-spacing: 0.15em;
+      text-align: center;
+      padding: 0 2rem;
+      line-height: 1.8;
+    }
+
+    /* ── OVERLAY UI ── */
+    #ui-overlay {
+      position: fixed; inset: 0; z-index: 10;
+      pointer-events: none;
+    }
+
+    /* Top bar */
+    .top-bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: env(safe-area-inset-top, 1.5rem) 2rem 1rem;
+      padding-top: max(env(safe-area-inset-top, 0px), 1.5rem);
+      background: linear-gradient(to bottom, rgba(26,20,16,0.75) 0%, transparent 100%);
+      display: flex; align-items: flex-start; justify-content: space-between;
+    }
+
+    .site-name {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.75rem;
+      letter-spacing: 0.35em;
+      color: var(--cream);
+      text-transform: uppercase;
+      opacity: 0.85;
+      text-decoration: none;
+      pointer-events: all;
+    }
+
+    .site-name span { color: var(--gold); }
+
+    .site-name:hover { opacity: 1; }
+
+    /* Scanning indicator */
+    #scan-prompt {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 2rem 2rem max(env(safe-area-inset-bottom, 0px), 2rem);
+      background: linear-gradient(to top, rgba(26,20,16,0.85) 0%, transparent 100%);
+      display: flex; flex-direction: column;
+      align-items: center; gap: 1rem;
+      transition: opacity 0.6s ease;
+    }
+
+    #scan-prompt.hidden { opacity: 0; pointer-events: none; }
+
+    .scan-frame {
+      width: 180px; height: 180px;
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+
+    .scan-frame::before,
+    .scan-frame::after,
+    .scan-frame .corner-br,
+    .scan-frame .corner-tl {
+      content: '';
+      position: absolute;
+      width: 28px; height: 28px;
+      border-color: var(--gold);
+      border-style: solid;
+    }
+
+    .scan-frame::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+    .scan-frame::after  { top: 0; right: 0; border-width: 2px 2px 0 0; }
+    .scan-frame .corner-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+    .scan-frame .corner-tl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+
+    .scan-line {
+      position: absolute;
+      left: 4px; right: 4px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      top: 8px;
+      animation: scan 2.4s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--gold);
+    }
+
+    @keyframes scan {
+      0%, 100% { top: 8px; opacity: 0; }
+      10%       { opacity: 1; }
+      90%       { opacity: 1; }
+      50%       { top: calc(100% - 8px); }
+    }
+
+    .scan-label {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      color: var(--cream);
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .scan-sublabel {
+      font-style: italic;
+      font-size: 0.8rem;
+      color: var(--gold);
+      text-align: center;
+      max-width: 220px;
+      line-height: 1.6;
+      opacity: 0.9;
+    }
+
+    /* Found indicator */
+    #found-prompt {
+      position: absolute;
+      bottom: max(env(safe-area-inset-bottom, 0px), 2rem);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--mist);
+      border: 1px solid var(--gold);
+      padding: 0.75rem 1.75rem;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.3rem;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #found-prompt.visible { opacity: 1; }
+
+    .found-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.35em;
+      color: var(--ink);
+      text-transform: uppercase;
+    }
+
+    .found-title {
+      font-style: italic;
+      font-size: 0.95rem;
+      color: var(--ink);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── INSTRUCTIONS MODAL ── */
+    #instructions {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(26,20,16,0.97);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2rem;
+      padding: 2.5rem;
+      transition: opacity 0.6s ease;
+    }
+
+    #instructions.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .instructions-eyebrow {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.65rem;
+      letter-spacing: 0.5em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    .instructions-title {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: clamp(1.6rem, 6vw, 2.2rem);
+      letter-spacing: 0.2em;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .instructions-body {
+      font-style: italic;
+      font-size: clamp(0.9rem, 3vw, 1.05rem);
+      color: rgba(245,240,232,0.65);
+      text-align: center;
+      max-width: 300px;
+      line-height: 2;
+    }
+
+    .divider {
+      width: 60px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    .begin-btn {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.75rem;
+      letter-spacing: 0.45em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: var(--gold);
+      border: none;
+      padding: 1rem 2.5rem;
+      cursor: pointer;
+      pointer-events: all;
+      transition: background 0.3s, letter-spacing 0.3s;
+      margin-top: 0.5rem;
+    }
+
+    .begin-btn:hover {
+      background: var(--cream);
+      letter-spacing: 0.55em;
+    }
+
+    .artist-credit {
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      color: rgba(245,240,232,0.25);
+      text-align: center;
+      pointer-events: all;
+    }
+
+    .artist-credit a {
+      color: rgba(201,169,110,0.5);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .artist-credit a:hover {
+      color: var(--gold);
+    }
+
+    /* A-Frame scene */
+    a-scene {
+      position: fixed !important;
+      inset: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ LOADING SCREEN ══ -->
+  <div id="loading-screen">
+    <div class="loading-title">Kaleidobloom</div>
+    <div class="loading-subtitle">An Augmented Reality Experience</div>
+    <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+    <div class="loading-hint">Initializing camera &amp; image recognition<br>Please allow camera access when prompted</div>
+  </div>
+
+  <!-- ══ INSTRUCTIONS ══ -->
+  <div id="instructions">
+    <div class="instructions-eyebrow">Michael Haggerty</div>
+    <div class="instructions-title">The Redwood</div>
+    <div class="divider"></div>
+    <div class="instructions-body">
+      Point your camera at the painting<br>
+      and watch the still image<br>
+      return to life
+    </div>
+    <button class="begin-btn" onclick="startAR()">Begin</button>
+    <div class="artist-credit">
+      <a href="https://kaleidomichael.com" target="_blank">kaleidomichael.com</a>
+    </div>
+  </div>
+
+  <!-- ══ UI OVERLAY ══ -->
+  <div id="ui-overlay">
+    <div class="top-bar">
+      <a href="https://kaleidomichael.com" target="_blank" class="site-name">
+        Kaleid<span>o</span>bloom
+      </a>
+      <div class="site-name" style="font-size:0.6rem; opacity:0.45; text-align:right; pointer-events:none;">
+        AR<br>EXPERIENCE
+      </div>
+    </div>
+
+    <div id="scan-prompt">
+      <div class="scan-frame">
+        <div class="corner-br"></div>
+        <div class="corner-tl"></div>
+        <div class="scan-line"></div>
+      </div>
+      <div class="scan-label">Seeking the painting</div>
+      <div class="scan-sublabel">Hold your camera steady<br>before the work</div>
+    </div>
+
+    <div id="found-prompt">
+      <div class="found-label">Now Playing</div>
+      <div class="found-title">The Redwood</div>
+    </div>
+  </div>
+
+  <!-- ══ AR SCENE ══ -->
+  <a-scene
+    id="ar-scene"
+    mindar-image="imageTargetSrc: targets/targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    style="display:none;">
+
+    <a-assets>
+      <video
+        id="redwood-video"
+        src="video/Redwood_ARfractal.mp4"
+        playsinline
+        webkit-playsinline
+        loop
+        crossorigin="anonymous"
+        preload="auto">
+      </video>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- 1438x1080 = 1.331 aspect ratio → height: 0.753 -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-video
+        src="#redwood-video"
+        position="0 0 0.001"
+        width="1"
+        height="0.753"
+        rotation="0 0 0">
+      </a-video>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+    const loadingScreen = document.getElementById('loading-screen');
+    const instructions  = document.getElementById('instructions');
+    const arScene       = document.getElementById('ar-scene');
+    const scanPrompt    = document.getElementById('scan-prompt');
+    const foundPrompt   = document.getElementById('found-prompt');
+    const redwoodVideo  = document.getElementById('redwood-video');
+
+    // Dismiss loading screen after brief moment
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        loadingScreen.classList.add('hidden');
+      }, 2200);
+    });
+
+    function startAR() {
+      instructions.classList.add('hidden');
+      arScene.style.display = 'block';
+
+      arScene.addEventListener('arReady', () => {
+        console.log('MindAR ready');
+      });
+
+      arScene.addEventListener('arError', (e) => {
+        console.warn('MindAR error', e.detail);
+      });
+
+      const target = arScene.querySelector('[mindar-image-target]');
+
+      // Painting recognized — play film
+      target.addEventListener('targetFound', () => {
+        scanPrompt.classList.add('hidden');
+        foundPrompt.classList.add('visible');
+        redwoodVideo.play().catch(e => console.warn('Autoplay blocked:', e));
+      });
+
+      // Painting lost — pause film
+      target.addEventListener('targetLost', () => {
+        scanPrompt.classList.remove('hidden');
+        foundPrompt.classList.remove('visible');
+        redwoodVideo.pause();
+      });
+    }
+  </script>
+
+</body>
+</html>
