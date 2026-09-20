@@ -277,6 +277,16 @@
 
     #found-prompt.visible { opacity: 1; }
 
+    #found-prompt {
+      text-decoration: none;
+      pointer-events: all;
+      cursor: pointer;
+    }
+
+    #found-prompt:active {
+      opacity: 0.75;
+    }
+
     .found-label {
       font-family: 'Cinzel', serif;
       font-size: 0.6rem;
@@ -342,10 +352,10 @@
       <div class="scan-sublabel">Hold your camera steady<br>before the work</div>
     </div>
 
-    <div id="found-prompt">
+    <a id="found-prompt" href="https://kaleidomichael.com" target="_blank">
       <div class="found-label">Now Playing</div>
       <div class="found-title">The Redwood</div>
-    </div>
+    </a>
   </div>
 
   <!-- ══ AR SCENE — always in DOM, never display:none ══ -->
