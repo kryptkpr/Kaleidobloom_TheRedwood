@@ -96,8 +96,7 @@
     /* Top bar */
     .top-bar {
       position: absolute; top: 0; left: 0; right: 0;
-      padding: env(safe-area-inset-top, 1.5rem) 2rem 1rem;
-      padding-top: max(env(safe-area-inset-top, 0px), 1.5rem);
+      padding: max(env(safe-area-inset-top, 0px), 1.5rem) 2rem 1rem;
       background: linear-gradient(to bottom, rgba(26,20,16,0.75) 0%, transparent 100%);
       display: flex; align-items: flex-start; justify-content: space-between;
     }
@@ -115,7 +114,6 @@
     }
 
     .site-name span { color: var(--gold); }
-
     .site-name:hover { opacity: 1; }
 
     /* Scanning indicator */
@@ -289,10 +287,7 @@
       margin-top: 0.5rem;
     }
 
-    .begin-btn:hover {
-      background: var(--cream);
-      letter-spacing: 0.55em;
-    }
+    .begin-btn:hover { background: var(--cream); letter-spacing: 0.55em; }
 
     .artist-credit {
       font-size: 0.68rem;
@@ -308,8 +303,33 @@
       transition: color 0.3s;
     }
 
-    .artist-credit a:hover {
-      color: var(--gold);
+    .artist-credit a:hover { color: var(--gold); }
+
+    /* ── AR INITIALIZING STATE ── */
+    #ar-loading {
+      position: fixed; inset: 0; z-index: 40;
+      background: rgba(26,20,16,0.92);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    #ar-loading.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .ar-loading-text {
+      font-family: 'Cinzel', serif;
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      color: var(--cream);
+      text-transform: uppercase;
+      opacity: 0.7;
     }
 
     /* A-Frame scene */
@@ -339,10 +359,18 @@
       and watch the still image<br>
       return to life
     </div>
-    <button class="begin-btn" onclick="startAR()">Begin</button>
+    <button class="begin-btn" id="begin-btn">Begin</button>
     <div class="artist-credit">
       <a href="https://kaleidomichael.com" target="_blank">kaleidomichael.com</a>
     </div>
+  </div>
+
+  <!-- ══ AR INITIALIZING ══ -->
+  <div id="ar-loading">
+    <div class="loading-bar-wrap" style="width:160px;">
+      <div class="loading-bar"></div>
+    </div>
+    <div class="ar-loading-text">Starting camera&hellip;</div>
   </div>
 
   <!-- ══ UI OVERLAY ══ -->
@@ -412,10 +440,12 @@
   <script>
     const loadingScreen = document.getElementById('loading-screen');
     const instructions  = document.getElementById('instructions');
+    const arLoadingEl   = document.getElementById('ar-loading');
     const arScene       = document.getElementById('ar-scene');
     const scanPrompt    = document.getElementById('scan-prompt');
     const foundPrompt   = document.getElementById('found-prompt');
     const redwoodVideo  = document.getElementById('redwood-video');
+    const beginBtn      = document.getElementById('begin-btn');
 
     // Dismiss loading screen after brief moment
     window.addEventListener('load', () => {
@@ -424,29 +454,47 @@
       }, 2200);
     });
 
+    beginBtn.addEventListener('click', startAR);
+
     function startAR() {
-  instructions.classList.add('hidden');
-  arScene.style.display = 'block';
+      // Hide instructions, show AR initializing spinner
+      instructions.classList.add('hidden');
+      arLoadingEl.classList.add('visible');
 
-  arScene.addEventListener('loaded', () => {
-    const mindARSystem = arScene.systems['mindar-image-system'];
-    mindARSystem.start();
-  });
+      // Make the A-Frame scene part of the DOM and visible
+      arScene.style.display = 'block';
 
-  arScene.addEventListener('arReady', () => {
-    console.log('MindAR ready');
-  });
+      // Wait for A-Frame to finish loading, then start MindAR
+      arScene.addEventListener('loaded', () => {
+        const mindARSystem = arScene.systems['mindar-image-system'];
+        if (mindARSystem) {
+          mindARSystem.start();
+        } else {
+          console.warn('MindAR system not found — check the script loaded correctly.');
+        }
+      });
 
-      const target = arScene.querySelector('[mindar-image-target]');
+      // Camera is ready — hide the initializing overlay
+      arScene.addEventListener('arReady', () => {
+        arLoadingEl.classList.remove('visible');
+        console.log('MindAR ready');
+      });
+
+      arScene.addEventListener('arError', (e) => {
+        arLoadingEl.classList.remove('visible');
+        console.warn('MindAR error:', e.detail);
+      });
 
       // Painting recognized — play film
+      const target = arScene.querySelector('[mindar-image-target]');
+
       target.addEventListener('targetFound', () => {
         scanPrompt.classList.add('hidden');
         foundPrompt.classList.add('visible');
         redwoodVideo.play().catch(e => console.warn('Autoplay blocked:', e));
       });
 
-      // Painting lost — pause film
+      // Painting lost — pause film, return to scanning
       target.addEventListener('targetLost', () => {
         scanPrompt.classList.remove('hidden');
         foundPrompt.classList.remove('visible');
