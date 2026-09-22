@@ -188,12 +188,14 @@
 
     /* Scanning indicator */
     #scan-prompt {
-      position: absolute;
+      position: fixed;
       inset: 0;
+      z-index: 11;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 1rem;
       padding: 2rem;
+      pointer-events: none;
       transition: opacity 0.6s ease;
     }
 
@@ -356,6 +358,17 @@
       <div class="found-label">Now Playing</div>
       <div class="found-title">The Redwood</div>
     </a>
+  </div>
+
+  <!-- ══ SCAN PROMPT — centered independently ══ -->
+  <div id="scan-prompt">
+    <div class="scan-frame">
+      <div class="corner-br"></div>
+      <div class="corner-tl"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scan-label">Seeking the painting</div>
+    <div class="scan-sublabel">Hold your camera steady<br>before the work</div>
   </div>
 
   <!-- ══ AR SCENE — always in DOM, never display:none ══ -->
