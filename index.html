@@ -450,13 +450,13 @@
       const target = arScene.querySelector('[mindar-image-target]');
 
       target.addEventListener('targetFound', () => {
-        scanPrompt.classList.add('hidden');
+        scanPrompt.style.display = 'none';
         foundPrompt.classList.add('visible');
         redwoodVideo.play().catch(e => console.warn('Autoplay blocked:', e));
       });
 
       target.addEventListener('targetLost', () => {
-        scanPrompt.classList.remove('hidden');
+        scanPrompt.style.display = 'flex';
         foundPrompt.classList.remove('visible');
         redwoodVideo.pause();
       });
