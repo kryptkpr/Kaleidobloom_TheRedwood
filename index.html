@@ -400,6 +400,11 @@
 
   </a-scene>
 
+  <!-- Standalone audio element — bypasses A-Frame audio system entirely -->
+  <audio id="redwood-audio" loop preload="auto">
+    <source src="video/Redwood_ARfractal.mp4" type="video/mp4">
+  </audio>
+
   <script>
     const instructions = document.getElementById('instructions');
     const arLoading    = document.getElementById('ar-loading');
@@ -444,15 +449,20 @@
       target.addEventListener('targetFound', () => {
         scanPrompt.style.display = 'none';
         foundPrompt.classList.add('visible');
-        redwoodVideo.muted = false;
-        redwoodVideo.volume = 1.0;
-        redwoodVideo.play().catch(e => console.warn('Autoplay blocked:', e));
+        // Play video (visuals) via A-Frame
+        redwoodVideo.muted = true;
+        redwoodVideo.play().catch(e => console.warn('Video play blocked:', e));
+        // Play audio separately, outside A-Frame
+        const audio = document.getElementById('redwood-audio');
+        audio.currentTime = 0;
+        audio.play().catch(e => console.warn('Audio play blocked:', e));
       });
 
       target.addEventListener('targetLost', () => {
         scanPrompt.style.display = 'flex';
         foundPrompt.classList.remove('visible');
         redwoodVideo.pause();
+        document.getElementById('redwood-audio').pause();
       });
     });
   </script>
