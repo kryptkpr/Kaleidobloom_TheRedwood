@@ -380,7 +380,8 @@
         webkit-playsinline
         loop
         crossorigin="anonymous"
-        preload="auto">
+        preload="auto"
+        muted="false">
       </video>
     </a-assets>
 
@@ -443,6 +444,8 @@
       target.addEventListener('targetFound', () => {
         scanPrompt.style.display = 'none';
         foundPrompt.classList.add('visible');
+        redwoodVideo.muted = false;
+        redwoodVideo.volume = 1.0;
         redwoodVideo.play().catch(e => console.warn('Autoplay blocked:', e));
       });
 
